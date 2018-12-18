@@ -6,15 +6,9 @@ import (
 
 type ConsumeCallback func(msg *kafka.Message) error
 
-type Error struct {
-	msg string
-}
-func (e *Error) Error() string {
-	return e.msg
-}
-
 type Consumer struct {
-	Stopped   chan bool
+	isRunning bool
+	stopped   chan bool
 	consumer  *kafka.Consumer
 	committer *Committer
 }
@@ -43,7 +37,6 @@ func NewConsumer(brokers string, groupId string, topic string) (*Consumer, error
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -51,23 +44,24 @@ func NewConsumer(brokers string, groupId string, topic string) (*Consumer, error
 	return &Consumer{
 		consumer:  consumer,
 		committer: committer,
-		Stopped:   make(chan bool, 1),
+		stopped:   make(chan bool, 1),
 	}, nil
 }
 
 func (c *Consumer) Consume(cb ConsumeCallback) error {
-	stop := c.committer.Start()
+	c.isRunning = true
+	c.committer.Start()
 
-	run := true
-	for run == true {
+	for c.isRunning == true {
 		select {
-		case _ = <-c.Stopped:
+		case _ = <-c.stopped:
 			c.committer.WaitCommits()
-			run = false
+			c.committer.Stop()
+			c.isRunning = false
 		default:
 			err := c.consume(cb)
 			if err != nil {
-				stop <- true
+				c.Stop()
 				return err
 			}
 		}
@@ -101,6 +95,17 @@ func (c *Consumer) WaitCommits() {
 }
 
 func (c *Consumer) Close() error {
+	if c.isRunning {
+		c.Stop()
+	}
+
 	return c.consumer.Close()
 }
 
+func (c *Consumer) Stop() {
+	if c.isRunning {
+		c.stopped <- true
+	}
+
+	c.isRunning = false
+}

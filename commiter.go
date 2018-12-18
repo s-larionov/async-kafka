@@ -7,6 +7,8 @@ import (
 )
 
 type Committer struct {
+	isRunning bool
+	stopped   chan bool
 	consumer  *kafka.Consumer
 	topic     string
 	sync      sync.WaitGroup
@@ -28,23 +30,22 @@ func (c *Committer) WaitCommits() {
 	c.sync.Wait()
 }
 
-func (c *Committer) Start() chan bool {
-	stopped := make(chan bool, 1)
+func (c *Committer) Start() {
+	c.isRunning = true
+	c.stopped = make(chan bool, 1)
 	ticker := time.NewTicker(1 * time.Second)
 
 	go func() {
 		for {
 			select {
-			case <-ticker.C:
+			case <- ticker.C:
 				_ = c.commit()
-			case <-stopped:
+			case <- c.stopped:
 				c.WaitCommits()
 				return
 			}
 		}
 	}()
-
-	return stopped
 }
 
 func (c *Committer) Commit(msg *kafka.Message) {
@@ -84,4 +85,12 @@ func (c *Committer) commit() error {
 	c.sync.Add(-len(partitions))
 
 	return err
+}
+
+func (c *Committer) Stop() {
+	if c.isRunning {
+		c.stopped <- true
+	}
+
+	c.isRunning = false
 }
