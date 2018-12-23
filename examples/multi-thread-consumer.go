@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"github.com/s-larionov/async-kafka"
+	k "github.com/s-larionov/async-kafka"
 	"log"
 	"os"
 	"os/signal"
@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	consumer, err := async_kafka.NewSingleThreadConsumer("127.0.0.1:9092", "foobar_group", "foobar_topic")
+	consumer, err := k.NewConsumer("127.0.0.1:9092", "foobar_group", "foobar_topic", 5)
 	if err != nil {
 		fmt.Printf("Failed to create consumer: %s\n", err)
 		os.Exit(1)

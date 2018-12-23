@@ -2,18 +2,24 @@ package async_kafka
 
 import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"sync"
 )
 
-type ConsumeCallback func(msg *kafka.Message) error
+type ConsumeCallback func(msg *kafka.Message, thread int) error
 
 type Consumer struct {
+	threads   int
 	isRunning bool
 	stopped   chan bool
 	consumer  *kafka.Consumer
 	committer *Committer
 }
 
-func NewConsumer(brokers string, groupId string, topic string) (*Consumer, error) {
+func NewSingleThreadConsumer(brokers string, groupId string, topic string) (*Consumer, error) {
+	return NewConsumer(brokers, groupId, topic, 1)
+}
+
+func NewConsumer(brokers string, groupId string, topic string, threads int) (*Consumer, error) {
 	consumer, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers":        brokers,
 		"group.id":                 groupId,
@@ -45,6 +51,7 @@ func NewConsumer(brokers string, groupId string, topic string) (*Consumer, error
 		consumer:  consumer,
 		committer: committer,
 		stopped:   make(chan bool, 1),
+		threads:   threads,
 	}, nil
 }
 
@@ -52,14 +59,33 @@ func (c *Consumer) Consume(cb ConsumeCallback) error {
 	c.isRunning = true
 	c.committer.Start()
 
+	var wg sync.WaitGroup
+
+	for i := 1; i <= c.threads; i ++ {
+		wg.Add(1)
+		go func(thread int) {
+			err := c.runConsuming(cb, thread)
+			if err != nil {
+				c.stopped <- true
+			}
+			wg.Done()
+		}(i)
+	}
+
+	wg.Wait()
+
+	return nil
+}
+
+func (c *Consumer) runConsuming(cb ConsumeCallback, thread int) error {
 	for c.isRunning == true {
 		select {
 		case _ = <-c.stopped:
+			c.isRunning = false
 			c.committer.WaitCommits()
 			c.committer.Stop()
-			c.isRunning = false
 		default:
-			err := c.consume(cb)
+			err := c.consume(cb, thread)
 			if err != nil {
 				c.Stop()
 				return err
@@ -70,12 +96,12 @@ func (c *Consumer) Consume(cb ConsumeCallback) error {
 	return nil
 }
 
-func (c *Consumer) consume(cb ConsumeCallback) error {
+func (c *Consumer) consume(cb ConsumeCallback, thread int) error {
 	event := c.consumer.Poll(1000)
 
 	switch msg := event.(type) {
 	case *kafka.Message:
-		err := cb(msg)
+		err := cb(msg, thread)
 		if err != nil {
 			return err
 		} else {
