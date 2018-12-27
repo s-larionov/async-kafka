@@ -55,17 +55,20 @@ func NewConsumer(brokers string, groupId string, topic string, threads int) (*Co
 	}, nil
 }
 
-func (c *Consumer) Consume(cb ConsumeCallback) {
+func (c *Consumer) Consume(cb ConsumeCallback) []error {
 	c.isRunning = true
 	c.committer.Start()
 
 	var wg sync.WaitGroup
+
+	errors := make([]error, 0)
 
 	for i := 1; i <= c.threads; i ++ {
 		wg.Add(1)
 		go func(thread int) {
 			err := c.runConsuming(cb, thread)
 			if err != nil {
+				errors = append(errors, err)
 				c.stopped <- true
 			}
 			wg.Done()
@@ -73,6 +76,12 @@ func (c *Consumer) Consume(cb ConsumeCallback) {
 	}
 
 	wg.Wait()
+
+	if len(errors) == 0 {
+		return nil
+	}
+
+	return errors
 }
 
 func (c *Consumer) runConsuming(cb ConsumeCallback, thread int) error {
