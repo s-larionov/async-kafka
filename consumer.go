@@ -55,7 +55,7 @@ func NewConsumer(brokers string, groupId string, topic string, threads int) (*Co
 	}, nil
 }
 
-func (c *Consumer) Consume(cb ConsumeCallback) error {
+func (c *Consumer) Consume(cb ConsumeCallback) {
 	c.isRunning = true
 	c.committer.Start()
 
@@ -73,8 +73,6 @@ func (c *Consumer) Consume(cb ConsumeCallback) error {
 	}
 
 	wg.Wait()
-
-	return nil
 }
 
 func (c *Consumer) runConsuming(cb ConsumeCallback, thread int) error {
