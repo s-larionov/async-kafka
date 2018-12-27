@@ -30,14 +30,11 @@ func main() {
 		}
 	}()
 
-	err = consumer.Consume(func(msg *kafka.Message, thread int) error {
+	consumer.Consume(func(msg *kafka.Message, thread int) error {
 		fmt.Printf("[Thread %d] Message was consumed on %v: %s\n", thread, msg.TopicPartition, string(msg.Value))
 
 		return nil
 	})
-	if err != nil {
-		fmt.Printf("Failed to consume: %s\n", err)
-	}
 
 	fmt.Println("Closing consumer")
 	err = consumer.Close()
