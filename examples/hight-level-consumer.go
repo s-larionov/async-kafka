@@ -11,6 +11,7 @@ import (
 )
 
 func main() {
+	// consumer, err := async_kafka.NewConsumer("127.0.0.1:9092", "foobar_group", "foobar_topic", 1)
 	consumer, err := async_kafka.NewSingleThreadConsumer("127.0.0.1:9092", "foobar_group", "foobar_topic")
 	if err != nil {
 		fmt.Printf("Failed to create consumer: %s\n", err)
