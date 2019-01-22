@@ -41,7 +41,6 @@ func main() {
 	}
 
 	fmt.Println("Closing consumer")
-	consumer.WaitCommits()
 	err = consumer.Close()
 	if err != nil {
 		log.Println(err)

@@ -89,7 +89,6 @@ func (c *Consumer) runConsuming(cb ConsumeCallback, thread int) error {
 		select {
 		case _ = <-c.stopped:
 			c.isRunning = false
-			c.committer.WaitCommits()
 			c.committer.Stop()
 		default:
 			err := c.consume(cb, thread)
@@ -121,10 +120,6 @@ func (c *Consumer) consume(cb ConsumeCallback, thread int) error {
 	}
 
 	return nil
-}
-
-func (c *Consumer) WaitCommits() {
-	c.committer.WaitCommits()
 }
 
 func (c *Consumer) Close() error {
