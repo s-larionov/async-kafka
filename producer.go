@@ -42,8 +42,6 @@ func (p *Producer) Errors() chan error {
 }
 
 func (p *Producer) Produce(message string) error {
-	p.wg.Add(1)
-
 	return p.producer.Produce(&kafka.Message{
 		TopicPartition: kafka.TopicPartition{Topic: &p.topic, Partition: kafka.PartitionAny},
 		Value:          []byte(message),
@@ -51,6 +49,8 @@ func (p *Producer) Produce(message string) error {
 }
 
 func (p *Producer) handleMessages() {
+	p.wg.Add(1)
+
 	for e := range p.producer.Events() {
 		switch ev := e.(type) {
 		case *kafka.Message:
@@ -58,7 +58,7 @@ func (p *Producer) handleMessages() {
 				p.errors <- ev.TopicPartition.Error
 			}
 		}
-
-		p.wg.Done()
 	}
+
+	p.wg.Done()
 }
