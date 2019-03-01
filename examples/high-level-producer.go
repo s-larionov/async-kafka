@@ -20,16 +20,16 @@ func main() {
 
 	fmt.Printf("Created Producer %v\n", p)
 
+	go func(){
+		for e := range p.Errors() {
+			fmt.Printf("Delivery failed: %v\n", e)
+		}
+	}()
+
 	for i := 1; i <= 100000; i++ {
 		err := p.Produce(fmt.Sprintf("Message %d", i))
 		if err != nil {
 			fmt.Println(err)
 		}
 	}
-
-	go func(){
-		for e := range p.Errors() {
-			fmt.Printf("Delivery failed: %v\n", e)
-		}
-	}()
 }
