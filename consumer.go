@@ -69,7 +69,7 @@ func (c *Consumer) Consume(cb ConsumeCallback) []error {
 			err := c.runConsuming(cb, thread)
 			if err != nil {
 				errors = append(errors, err)
-				c.stopped <- true
+				c.Stop()
 			}
 			wg.Done()
 		}(i)
@@ -88,7 +88,6 @@ func (c *Consumer) runConsuming(cb ConsumeCallback, thread int) error {
 	for c.isRunning == true {
 		select {
 		case _ = <-c.stopped:
-			c.isRunning = false
 			c.committer.Stop()
 		default:
 			err := c.consume(cb, thread)
@@ -123,9 +122,7 @@ func (c *Consumer) consume(cb ConsumeCallback, thread int) error {
 }
 
 func (c *Consumer) Close() error {
-	if c.isRunning {
-		c.Stop()
-	}
+	c.Stop()
 
 	return c.consumer.Close()
 }

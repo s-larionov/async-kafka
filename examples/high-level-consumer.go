@@ -33,7 +33,6 @@ func main() {
 
 	errors := consumer.Consume(func(msg *kafka.Message, thread int) error {
 		fmt.Printf("[Thread %d] Message was consumed on %v: %s\n", thread, msg.TopicPartition, string(msg.Value))
-
 		return nil
 	})
 	if errors != nil {
