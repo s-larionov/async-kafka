@@ -26,7 +26,7 @@ func main() {
 		}
 	}()
 
-	for i := 1; i <= 100000; i++ {
+	for i := 1; i <= 10; i++ {
 		err := p.Produce(fmt.Sprintf("Message %d", i))
 		if err != nil {
 			fmt.Println(err)
