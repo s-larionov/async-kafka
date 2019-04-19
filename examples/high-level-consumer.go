@@ -8,11 +8,12 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func main() {
-	// consumer, err := async_kafka.NewConsumer("127.0.0.1:9092", "foobar_group", "foobar_topic", 1)
-	consumer, err := async_kafka.NewSingleThreadConsumer("127.0.0.1:9092", "foobar_group", "foobar_topic")
+	consumer, err := async_kafka.NewConsumer("127.0.0.1:9092", "foobar_group", "foobar_multithread_test", 12)
+	//consumer, err := async_kafka.NewSingleThreadConsumer("127.0.0.1:9092", "foobar_group", "foobar_multithread_test")
 	if err != nil {
 		fmt.Printf("Failed to create consumer: %s\n", err)
 		os.Exit(1)
@@ -34,6 +35,8 @@ func main() {
 	errors := consumer.Consume(func(msg *kafka.Message, thread int) error {
 		fmt.Printf("[Thread %d] Message was consumed on %v: %s\n", thread, msg.TopicPartition, string(msg.Value))
 
+		time.Sleep(time.Second)
+
 		return nil
 	})
 	if errors != nil {
@@ -41,8 +44,8 @@ func main() {
 	}
 
 	fmt.Println("Closing consumer")
-	err = consumer.Close()
-	if err != nil {
-		log.Println(err)
+	errors = consumer.Close()
+	if len(errors) > 0 {
+		log.Println(errors)
 	}
 }

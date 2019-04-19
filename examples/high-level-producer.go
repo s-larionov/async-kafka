@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	p, err := async_kafka.NewProducer("127.0.0.1:9092", "foobar_topic")
+	p, err := async_kafka.NewProducer("127.0.0.1:9092", "foobar_multithread_test")
 	if err != nil {
 		fmt.Printf("Failed to create producer: %s\n", err)
 		os.Exit(1)
@@ -26,7 +26,7 @@ func main() {
 		}
 	}()
 
-	for i := 1; i <= 10; i++ {
+	for i := 1; i <= 1000; i++ {
 		err := p.Produce(fmt.Sprintf("Message %d", i))
 		if err != nil {
 			fmt.Println(err)
