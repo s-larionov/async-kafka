@@ -114,6 +114,9 @@ func (c *Consumer) consume(cb ConsumeCallback, thread int) error {
 		return msg
 	case kafka.PartitionEOF:
 		// Do nothing
+		return nil
+	default:
+		return msg	
 	}
 
 	return nil
