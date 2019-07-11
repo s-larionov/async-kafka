@@ -20,10 +20,23 @@ func NewSingleThreadConsumer(brokers string, groupId string, topic string) (*Con
 }
 
 func NewConsumer(brokers string, groupId string, topic string, threads int) (*Consumer, error) {
+	return NewConsumerWithRebalanceCb(brokers, groupId, topic, threads, func(consumer *kafka.Consumer, event kafka.Event) error {
+		switch msg := event.(type) {
+		case kafka.AssignedPartitions:
+			return consumer.Assign(msg.Partitions)
+		case kafka.RevokedPartitions:
+			return consumer.Unassign()
+		}
+
+		return nil
+	})
+}
+
+func NewConsumerWithRebalanceCb(brokers string, groupId string, topic string, threads int, cb kafka.RebalanceCb) (*Consumer, error) {
 	consumers := make([]*kafka.Consumer, threads)
 	committers := make([]*Committer, threads)
 	for i := 0; i < threads; i++ {
-		consumer, committer, err := createConsumer(brokers, groupId, topic)
+		consumer, committer, err := createConsumer(brokers, groupId, topic, cb)
 
 		if err != nil {
 			return nil, err
@@ -115,8 +128,6 @@ func (c *Consumer) consume(cb ConsumeCallback, thread int) error {
 	case kafka.PartitionEOF:
 		// Do nothing
 		return nil
-	default:
-		return msg	
 	}
 
 	return nil
@@ -145,7 +156,7 @@ func (c *Consumer) Stop() {
 	c.isRunning = false
 }
 
-func createConsumer(brokers string, groupId string, topic string) (*kafka.Consumer, *Committer, error) {
+func createConsumer(brokers string, groupId string, topic string, cb kafka.RebalanceCb) (*kafka.Consumer, *Committer, error) {
 	consumer, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers":        brokers,
 		"group.id":                 groupId,
@@ -159,16 +170,7 @@ func createConsumer(brokers string, groupId string, topic string) (*kafka.Consum
 	}
 	committer := newCommitter(consumer, topic)
 
-	err = consumer.Subscribe(topic, func(c *kafka.Consumer, event kafka.Event) error {
-		switch msg := event.(type) {
-		case kafka.AssignedPartitions:
-			return consumer.Assign(msg.Partitions)
-		case kafka.RevokedPartitions:
-			return consumer.Unassign()
-		}
-
-		return nil
-	})
+	err = consumer.Subscribe(topic, cb)
 	if err != nil {
 		return nil, nil, err
 	}
