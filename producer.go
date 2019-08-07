@@ -15,22 +15,28 @@ type Producer struct {
 }
 
 func NewProducer(brokers string, topic string) (*Producer, error) {
-	producer, err := kafka.NewProducer(&kafka.ConfigMap{
-		"bootstrap.servers": brokers,
-	})
+	defaultConfig := kafka.ConfigMap{}
+	
+	return NewProducerWithConfig(brokers, topic, defaultConfig)
+}
+
+func NewProducerWithConfig(brokers string, topic string, config kafka.ConfigMap) (*Producer, error) {
+	config["bootstrap.servers"] = brokers
+	
+	producer, err := kafka.NewProducer(&config)
 	if err != nil {
 		return nil, err
 	}
-
+	
 	p := &Producer{
 		producer:  producer,
 		topic:     topic,
 		errors:    make(chan error),
 		isRunning: true,
 	}
-
+	
 	go p.handleMessages()
-
+	
 	return p, nil
 }
 
