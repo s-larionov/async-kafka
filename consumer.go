@@ -70,12 +70,14 @@ func (c *Consumer) Consume(cb ConsumeCallback) []error {
 		wg.Add(1)
 		go func(thread int) {
 			err := c.runConsuming(cb, thread)
+
 			if err != nil {
 				errorsMu.Lock()
 				errors = append(errors, err)
 				errorsMu.Unlock()
 				c.Stop()
 			}
+
 			wg.Done()
 		}(i)
 	}
@@ -84,6 +86,11 @@ func (c *Consumer) Consume(cb ConsumeCallback) []error {
 
 	if len(errors) == 0 {
 		return nil
+	}
+
+	closeErrors := c.Close()
+	if len(closeErrors) > 0 {
+		errors = append(errors, closeErrors...)
 	}
 
 	return errors
@@ -97,7 +104,6 @@ func (c *Consumer) runConsuming(cb ConsumeCallback, thread int) error {
 		default:
 			err := c.consume(cb, thread)
 			if err != nil {
-				c.Stop()
 				return err
 			}
 		}
@@ -139,7 +145,6 @@ func (c *Consumer) Close() []error {
 	var errors []error
 	for _, consumer := range c.consumers {
 		err := consumer.Close()
-
 		if err != nil {
 			errors = append(errors, err)
 		}
